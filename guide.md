@@ -1,10 +1,10 @@
-##Guide Style & Further Information
+## Guide Style & Further Information
 
 Commands and other important, **literal** pieces of system information are written in *italic* script. Examples: *user* when referring to a system user called "user", or *ls -la* when referring to the command "ls -la", as literally typed into the terminal window.
 
 In case you are curious about any of the commands provided in this guide beyond the explanations it provides, you can always prefix a basic command with "man" and run that in order to learn more about it, or run it with the "--help" argument to get a basic rundown. Example: *ls -la*, which would give you a somewhat more detailed listing of a directory's contents. If you want to learn more about it, you can either type *man ls* (without the *-la* part), or *ls --help*.
 
-####Assumptions about your server (eg. VPS) Setup
+#### Assumptions about your server (eg. VPS) Setup
 
 Operating system wise, the guide is written around you using *Ubuntu 16.04*.
 
@@ -12,7 +12,7 @@ Regarding our text editing needs on the server side, we will assume you'll be us
 
 Some basic things you should know about *nano*: You save a file with Ctrl-O and quit the editor with Ctrl-X. You can go into text finding mode by hitting Ctrl-W.
 
-##Setting up the Basic Environment
+## Setting up the Basic Environment
 
 On conventional operating systems, it is not recommended to use system users with administrative privileges (such as *root* in the case of Linux) to run software that doesn't need those privileges to function properly. Thus, we are going to set up two system users: One to log in to, manage our masternodes and run wallet operations (such as those you can carry out with *vivo-cli* or *vivo-tx*). It's possible you already have such a user without administrative privileges, in which case you won't have to create another user of that sort.
 
@@ -44,13 +44,13 @@ To set these users up, we are going to go through the following steps:
 
 From here on out, this guide will assume that you're working as *user* unless otherwise specified. All commands that need *root* privileges or that are going to be run as yet another user (say, *vivo-daemon*) will be run using *sudo*.
 
-##Protecting SSH Access
+## Protecting SSH Access
 
-###Setting up SSH Key Based Authentication
+### Setting up SSH Key Based Authentication
 
 By default, your VPS is most likely configured to allow a simple login by password. Whilst that is convenient and doesn't require any additional setup, it allows everyone to have a shot at trying to log in to your VPS if they manage to guess the password right. Whilst there are ways to mitigate attempts at guessing the password (through a process often referred to as "brute forcing"), making the login process key based lowers the success chance of such attempts into the realm of the stochastically absurd, which is where we want it to be.
 
-####Linux Desktop
+#### Linux Desktop
 
 1. Open a terminal.
 2. Make sure SSH is installed: *sudo apt-get install openssh-client*
@@ -69,7 +69,7 @@ By default, your VPS is most likely configured to allow a simple login by passwo
     * If it asks for your key passphrase instead of your normal login, and logging in with your key passphrase works, that means your server is now configured for key authentication. **WARNING:** If it still asks for your password, something's wrong, and you should **not** proceed with the following steps until it does, else you will lose SSH access to your server.
 6. If it works, you're done with this section and now have a working key based SSH login procedure in place.
 
-##Setting up the server side of the Masternode
+## Setting up the server side of the Masternode
 1. Open a SSH session using your preferred method (e.g. PuttY or a terminal), logging in with *user*.
 2. First, we'll be installing some software the VIVO software suite depends on to function, using the following steps:
     1. As VIVO originally forked off of Dash, which traces back to being a fork of Bitcoin, it shares a rather antiquated dependency on an old version of "libdb". To make sure that version is available, we are going to run *sudo add-apt-repository ppa:bitcoin/bitcoin*. This will add a third party software repository containing Bitcoin related packages to the system, such as libdb version 4.8, which is what we need.
