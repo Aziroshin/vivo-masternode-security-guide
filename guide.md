@@ -4,7 +4,7 @@ Commands and other important, **literal** pieces of system information are writt
 
 In case you are curious about any of the commands provided in this guide beyond the explanations it provides, you can always prefix a basic command with "man" and run that in order to learn more about it, or run it with the "--help" argument to get a basic rundown. Example: *ls -la*, which would give you a somewhat more detailed listing of a directory's contents. If you want to learn more about it, you can either type *man ls* (without the *-la* part), or *ls --help*.
 
-#### Assumptions about your server (eg. VPS) Setup
+#### Assumptions about your server (eg. VPS) setup
 
 Operating system wise, the guide is written around you using *Ubuntu 16.04*.
 
@@ -37,7 +37,7 @@ To set these users up, we are going to go through the following steps:
     4. Save & close.
 
 5. Try logging in as *user* instead of *root* to see whether it works. The rest of the guide will assume you're logged in as *user* unless specified otherwise.
-6. Run *sudo -la /root* and type in your password once it asks. This can have multiple outcomes (**Do not proceed with the guide until this step successfully checks out, or you WILL lose access to your server due to the steps later in the guide**):
+6. Run *sudo -la /root* and type in your password once it asks. This can have multiple outcomes (**Do not proceed with the guide until this step successfully checks out, or you WILL lose root access to your server due to the steps later in the guide**):
     * Success: It lists the contents of */root*, which, at the least, should include "*.*" and "*..*". For the purpose of this step, it's okay if it only shows these (even though that's unlikely).
     * Failure: It tells you the following: *user is not in the sudoers file.  This incident will be reported.* In this case, something went wrong with configuring sudo.
 
@@ -66,7 +66,30 @@ By default, your VPS is most likely configured to allow a simple login by passwo
         * With the default key location: *ssh user@1.2.3.4*
         * With a user specified key location: *ssh -i /home/user/.ssh/id_rsa_papayajuice user@1.2.3.4*
     * If it asks for your key passphrase instead of your normal login, and logging in with your key passphrase works, that means your server is now configured for key authentication. **WARNING:** If it still asks for your password, something's wrong, and you should **not** proceed with the following steps until it does, else you will lose SSH access to your server.
-6. If it works, you're done with this section and now have a working key based SSH login procedure in place.
+6. If the above checks out, we are now ready to disable logins as *root* altogether as well as restrict SSH access to certain users. While we're at it, we'll take the opportunity to review a few more changes that could be made to increase SSH security:
+    1. Before dealing with configuring SSH itself, we'll make one preparation: We'll create a system group for users that are allowed to SSH in to the server and add *user* to that group, effectively restricting SSH connections to be possible for *user* only, and be denied outright for any other user. This will be achieved through the following steps:
+        1. Create the group by running *sudo addgroup ssh-users*. Be aware that you can name the group differently, it doesn't have to be *ssh-users*, but the guide will assume it is throughout.
+        2. Add *user* to the newly created group: *sudo usermod -a -G ssh-users user*. Don't forget to substitute accordingly in case you're working with a different user and group name.
+    2. Before we get to the actual editing part we'll secure */etc/ssh/sshd_config* and prepare a copy to work on:
+        1. To make sure we can restore the current configuration if anything goes wrong, we'll make a copy of the file first: *sudo cp /etc/ssh/sshd_config /etc/ssh/sshd_config.orig*.
+        2. Now, we'll create a working copy: *sudo cp /etc/ssh/sshd_config /etc/ssh/sshd_config.staging*
+        3. Now, we open the file: *sudo nano /etc/ssh/sshd_config.staging*
+    3. The first thing we'll do in the file is take care of *root* access: Find *PermitRootLogin* and change the line to look like this: *PermitRootLogin no*.
+    4. Now, we'll disable password based logins: Find *PasswordAuthentication* and change the line to look like the following: *PasswordAuthentication no*.
+        * Just in case you're not on Ubuntu 16.04, find *PubkeyAuthentication* and make sure it's set to *yes*. Also, make sure that both, *PasswordAuthentication* and *PubkeyAuthentication* aren't preceded by an asterisk (*#*), as that would make SSH ignore that particular configuration line.
+    5. Find "AllowGroups" and add *ssh-users* (or whatever name you chose earlier for that group) to its list of allowed groups. If you can't find it (which is likely), simply go to the end of the file and add a new line like this: *AllowGroups ssh-users*. In case there are groups already listed: *AllowGroups* takes a space-separated list of groups allowed to connect using SSH. Simply add our group to it.
+        * You should also check whether there is an "AllowUsers" directive in the file. If there is, *AllowGroups* will not work, and if you already have users listed there, you would either have to add *user* to them and abandon the *AllowGroups* approach, or remove *AllowUsers* after you've added the users in question to the *ssh-users* group.
+    6. Save & close.
+    7. Now, we'll test the working copy we've just edited for syntax errors by running this command: *sudo /usr/sbin/sshd -t -f /etc/ssh/sshd_config.staging*. If it reports errors, fix them until subsequent test runs like these don't report any.
+    8. After step 7 checks out, we'll check for semantic errors by running an instance of *sshd* on a different port using the *-p* parameter (choose whatever port you want, for as long as it doesn't interfere with anything): *sudo /usr/sbin/sshd -d -p 2853 -f /etc/ssh/sshd_config.staging*. The *-d* parameter prevents *sshd* from starting in background mode and provides some debugging output just in case. Be aware that the server will only process one connection and exit after. If you want to attempt connecting multiple times (e.g. for testing purposes), you'll have to issue that command again for every attempt. To close the server while it's still running in that state, use the standard key combination to terminate foreground processes: Ctrl-C.
+    9. Open another SSH session and connect using the port you specified, as *user*. If you're using Linux, the command would look like this: *ssh -p 2853 user@1.2.3.4*. If you're using Windows or any GUI oriented SSH solution for that matter, your software of choice should have an input field for non-standard port connections somewhere in its interface.
+    10. If the login attempt is successful, you can move on to step 11. If it is not, you'll have to investigate what exactly is wrong, whereas the test server's debug output would be a good place to start. You can even add additional "d"s to the parameter to get further output if you feel it might help, like *-dd* or *-ddd* (three is the maximum). **WARNING: ** Do **not**, under any circumstance, proceed with the following steps until this checks out, or you'll lose SSH access to your server.
+    11. Once step 10 checks out, copy the working file to the configuration file's location, effectively overwriting the SSH configuration file with our edited version: *sudo cp /etc/ssh/sshd_config.staging /etc/ssh/sshd_config*.
+    12. Restart the SSH daemon: *sudo service ssh restart*.
+    13. Just to be sure, try logging in using a second SSH session again (**leave your first one open!**). If, for whatever reason, this does not check out, you can use your first, still logged in session to reverse any of the changes and restore the original configuration, which is **strongly** advised in this case before you do **anything** else, as this session is the thread by which your access to the server is hanging on right now. To revert, follow these steps:
+         1. *cp /etc/ssh/sshd_config.orig /etc/ssh/sshd_config*. You should never get to that point, and if you do, something must have gone wrong during the copying process (e.g. a typo).
+         2. Restart the SSH daemon: *sudo service sshd restart*.
+    14. If step 13 also checks out, you're hereby done with the SSH part. :)
 
 ## Setting up the server side of the Masternode
 1. Open a SSH session using your preferred method (e.g. PuttY or a terminal), logging in with *user*.
